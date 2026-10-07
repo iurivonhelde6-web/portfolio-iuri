@@ -137,7 +137,7 @@ a:hover{text-decoration-color:var(--accent)}
 <div class="brand"><b>IURI VON HELDE</b><span id="sub">Desenvolvedor Fullstack</span></div>
 <nav id="nav" aria-label="Seções"></nav>
 <main id="panel" aria-live="polite"></main>
-<div class="hints"><span class="kb" id="hint"></span><span><button id="pt" class="on">PT</button> <button id="en">EN</button></span></div>
+<div class="hints"><span class="kb" id="hint"></span><span><button id="pt" class="on">PT</button> <button id="en">EN</button></span><button id="snd" aria-pressed="false">&#9834; som desligado</button></div>
 <div id="load"><div>CARREGANDO <span>CIDADE</span></div></div>
 <noscript><div style="position:fixed;inset:0;display:grid;place-items:center;background:#0b0a1a;z-index:20">Ative o JavaScript para ver o portfólio.</div></noscript>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -153,7 +153,7 @@ const T = {
     stack:["Java","C# · .NET","TypeScript","React","Node.js"], where:"Rio de Janeiro, RJ · 6 anos de experiência",
     now:"Foco em arquitetura de software, desenvolvimento de sistemas e CyberSecurity.",
     talk:"vamos conversar", see:"ver projetos", scroll:"role para continuar ↓",
-    hint:"↑ ↓ navegar · scroll avança · Esc volta", mission:"missão", of:"de", back:"voltar",
+    hint:"↑ ↓ navegar · scroll avança · Esc volta", soundOn:"\u266A som ligado", soundOff:"\u266A som desligado", mission:"missão", of:"de", back:"voltar",
     sobre:"Desenvolvedor fullstack com 6 anos de experiência. Divido aplicações grandes em módulos independentes, crio componentes que vários times reaproveitam e padronizo Design Systems. Gosto do ritmo de startup.",
     ctaTxt:"Pode me chamar por e-mail ou pelo LinkedIn.", edu:"formação", cert:"certificações", lang:"idiomas",
     langs:["Português nativo","Inglês avançado","Espanhol fluente"], copy:"copiar", copied:"copiado ✓",
@@ -164,7 +164,7 @@ const T = {
     stack:["Java","C# · .NET","TypeScript","React","Node.js"], where:"Rio de Janeiro, Brazil · 6 years of experience",
     now:"Focused on software architecture, systems development and cybersecurity.",
     talk:"get in touch", see:"see projects", scroll:"scroll to continue ↓",
-    hint:"↑ ↓ navigate · scroll advances · Esc goes back", mission:"mission", of:"of", back:"back",
+    hint:"↑ ↓ navigate · scroll advances · Esc goes back", soundOn:"\u266A sound on", soundOff:"\u266A sound off", mission:"mission", of:"of", back:"back",
     sobre:"Fullstack developer with 6 years of experience. I split large applications into independent modules, build components several teams reuse and standardize Design Systems. I like the pace of a startup.",
     ctaTxt:"Reach me by e-mail or on LinkedIn.", edu:"education", cert:"certifications", lang:"languages",
     langs:["Native Portuguese","Advanced English","Fluent Spanish"], copy:"copy", copied:"copied ✓",
@@ -2475,6 +2475,7 @@ function go(i){
   if (trans){ queued = i; return; }
   if (i === cur) return;
   prev = cur; cur = i; buildNav();
+  if (typeof MUSIC !== "undefined") MUSIC.scene(i);
   clearTimeout(panelTimer);
   panel.classList.remove("in"); panel.classList.add("out");
   panelTimer = setTimeout(() => renderPanel(true), REDUCED ? 120 : 640);
@@ -2488,6 +2489,7 @@ function setLang(l){
   document.getElementById("pt").classList.toggle("on", l === "pt"); document.getElementById("en").classList.toggle("on", l === "en");
   document.getElementById("sub").textContent = T[l].role; document.getElementById("hint").textContent = T[l].hint;
   buildNav(); renderPanel(true); if (renderer && ZONES[3].g) repaintSigns();
+  if (typeof MUSIC !== "undefined") MUSIC.label();
 }
 function stepJob(d, set){ jobI = set !== undefined ? set : (jobI + d + JOBS[lang].length) % JOBS[lang].length; renderPanel(true); if (renderer) setJobSign(JOBS[lang][jobI].n, true); }
 function stepProj(d, set){ projI = set !== undefined ? set : (projI + d + PROJ[lang].length) % PROJ[lang].length; renderPanel(true); }
@@ -2542,5 +2544,36 @@ function boot(){
 }
 const fontsReady = document.fonts && document.fonts.ready ? Promise.race([document.fonts.ready, new Promise(r => setTimeout(r, 1800))]) : Promise.resolve();
 fontsReady.then(() => { try { boot(); } catch (err) { console.error(err); loadEl.classList.add("done"); } });
+/* ================= MUSIC =================
+   One song for the whole site. It keeps playing across pages; only the volume changes:
+   louder on Início, softer behind the other pages. Browsers only allow sound after a click,
+   so it starts off and the button in the corner turns it on. */
+const MUSIC = (() => {
+  const SRC = "audio/inicio.mp3";
+  const VOLS = [.65, .25, .25, .25, .25, .25, .25];   // 0 Início · 1 Perfil · 2 Habilidades · 3 Experiência · 4 Projetos · 5 Formação · 6 Contato
+  const FADE = 1.6, btn = document.getElementById("snd");
+  let on = false, scene = 0, audio = null, fadeId = 0, pref = false;
+  try { pref = localStorage.getItem("snd") === "1"; } catch (e) {}
+  const el = () => { if (!audio){ audio = new Audio(SRC); audio.loop = true; audio.preload = "auto"; audio.volume = 0; } return audio; };
+  function fadeTo(target, done){
+    const a = el(), from = a.volume, t0 = performance.now(), id = ++fadeId;
+    const step = now => { if (id !== fadeId) return; const k = Math.min(1, (now - t0)/(FADE*1000)), e = k*k*(3 - 2*k);
+      a.volume = Math.max(0, Math.min(1, from + (target - from)*e)); if (k < 1) requestAnimationFrame(step); else if (done) done(); };
+    requestAnimationFrame(step);
+  }
+  function label(){ if (!btn) return; btn.textContent = on ? T[lang].soundOn : T[lang].soundOff; btn.classList.toggle("on", on); btn.setAttribute("aria-pressed", on ? "true" : "false"); }
+  function apply(){
+    const a = el();
+    if (on){ if (a.paused) a.play().catch(() => {}); fadeTo(VOLS[scene] ?? .25); }
+    else if (!a.paused) fadeTo(0, () => a.pause());
+    label();
+  }
+  if (btn) btn.onclick = () => { on = !on; try { localStorage.setItem("snd", on ? "1" : "0"); } catch (e) {} apply(); };
+  // if the visitor turned sound on before, resume it on their first interaction
+  const first = () => { removeEventListener("pointerdown", first, true); removeEventListener("keydown", first, true); if (pref && !on){ on = true; apply(); } };
+  addEventListener("pointerdown", first, true); addEventListener("keydown", first, true);
+  label();
+  return {scene(i){ scene = i; if (on) fadeTo(VOLS[i] ?? .25); }, label};
+})();
 </script>
 </html>

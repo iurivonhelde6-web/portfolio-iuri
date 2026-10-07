@@ -149,6 +149,7 @@ function go(i){
   if (trans){ queued = i; return; }
   if (i === cur) return;
   prev = cur; cur = i; buildNav();
+  if (typeof MUSIC !== "undefined") MUSIC.scene(i);
   clearTimeout(panelTimer);
   panel.classList.remove("in"); panel.classList.add("out");
   panelTimer = setTimeout(() => renderPanel(true), REDUCED ? 120 : 640);
@@ -162,6 +163,7 @@ function setLang(l){
   document.getElementById("pt").classList.toggle("on", l === "pt"); document.getElementById("en").classList.toggle("on", l === "en");
   document.getElementById("sub").textContent = T[l].role; document.getElementById("hint").textContent = T[l].hint;
   buildNav(); renderPanel(true); if (renderer && ZONES[3].g) repaintSigns();
+  if (typeof MUSIC !== "undefined") MUSIC.label();
 }
 function stepJob(d, set){ jobI = set !== undefined ? set : (jobI + d + JOBS[lang].length) % JOBS[lang].length; renderPanel(true); if (renderer) setJobSign(JOBS[lang][jobI].n, true); }
 function stepProj(d, set){ projI = set !== undefined ? set : (projI + d + PROJ[lang].length) % PROJ[lang].length; renderPanel(true); }
